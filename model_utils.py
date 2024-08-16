@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import numpy as np
 import json
-# UserWarning: You are saving your model as an HDF5 file via `model.save()`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')`.
-# The name tf.nn.max_pool is deprecated. Please use tf.nn.max_pool2d instead.
 
 class ModelTraining:
     def __init__(self, epochs, learning_rate): 
@@ -10,9 +9,10 @@ class ModelTraining:
         self.VALID_DATA_DIR = 'Covid19-dataset/val'
         self.IMAGE_SHAPE = (640, 640)
         self.BATCH_SIZE = 32
-        self.num_classes = 3
         self.EPOCHS = epochs
+        self.num_classes = 3
         self.learning_rate = learning_rate
+        self.class_names = ['Covid', 'Normal', 'Viral Pneumonia']
 
         #self.datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
         # data augmentation
@@ -95,3 +95,25 @@ class ModelTraining:
 
         plt.tight_layout()
         plt.show()
+
+    def visualize_predictions(self, model, num_images=16):
+        images, labels = next(iter(self.valid_generator))
+        predictions = model.predict(images)
+        
+        plt.figure(figsize=(9, 9))
+        for i in range(num_images):
+            plt.subplot(4, 4, i + 1)
+            img = images[i]
+            plt.imshow(img)
+            true_label = np.argmax(labels[i])
+            predicted_label = np.argmax(predictions[i])
+            true_label_name = self.class_names[true_label]
+            predicted_label_name = self.class_names[predicted_label]
+            color = "green" if true_label == predicted_label else "red"
+            plt.title(f"True: {true_label_name}, Pred: {predicted_label_name}", color=color)
+            plt.axis('off')
+        
+        plt.tight_layout()
+        plt.show()
+
+    
