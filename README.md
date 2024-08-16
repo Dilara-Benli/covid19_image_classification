@@ -4,8 +4,6 @@ Kullanılan veri setinin [link](https://www.kaggle.com/datasets/pranavraikokte/c
 
 ### Sonuçlar
 
-![20_001](https://github.com/user-attachments/assets/de85f511-a983-4611-82ca-e68acdf6e1d5)
+![covid_grafik](https://github.com/user-attachments/assets/804d98b7-f53f-4451-a8ea-8174d5d54eb3)
 
-![covid_sonuc2](https://github.com/user-attachments/assets/d78a338d-5fe3-4abc-982a-b8209f9408ee)
-
-
+![covid_gorsel2](https://github.com/user-attachments/assets/3103e1d0-84c2-4ebf-b076-3aaf31aa5409)
