@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import json
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
 
 class ModelTraining:
     def __init__(self, epochs, learning_rate): 
@@ -14,9 +16,9 @@ class ModelTraining:
         self.learning_rate = learning_rate
         self.class_names = ['Covid', 'Normal', 'Viral Pneumonia']
 
-        #self.datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
+        self.valid_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
         # data augmentation
-        self.datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        self.train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
             rescale=1./255, 
             rotation_range=20,
             width_shift_range=0.2,
@@ -26,8 +28,8 @@ class ModelTraining:
             horizontal_flip=True,
             fill_mode='nearest'
             )
-        self.train_generator = self.datagen.flow_from_directory(self.TRAINING_DATA_DIR, shuffle=True, target_size=self.IMAGE_SHAPE)
-        self.valid_generator = self.datagen.flow_from_directory(self.VALID_DATA_DIR, shuffle=False, target_size=self.IMAGE_SHAPE)
+        self.train_generator = self.train_datagen.flow_from_directory(self.TRAINING_DATA_DIR, shuffle=True, target_size=self.IMAGE_SHAPE)
+        self.valid_generator = self.valid_datagen.flow_from_directory(self.VALID_DATA_DIR, shuffle=False, target_size=self.IMAGE_SHAPE)
 
     def build_model(self):
         model = tf.keras.Sequential([
@@ -43,27 +45,30 @@ class ModelTraining:
         ])
         return model
     
-    def create_model(self):
+    def create_model(self, model_path):
         model = self.build_model()
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate), 
                     loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
                     metrics=['accuracy'])
+        
+        callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True), 
+                     tf.keras.callbacks.ModelCheckpoint(filepath=model_path, save_best_only=True)]
         
         history = model.fit(self.train_generator,
                     steps_per_epoch=self.train_generator.samples // self.BATCH_SIZE,
                     epochs=self.EPOCHS,
                     validation_data=self.valid_generator,
                     validation_steps=self.valid_generator.samples // self.BATCH_SIZE,
+                    callbacks=callbacks,
                     verbose=1
                     )
         
         return model, history
-    
-    def save_model_and_history(self, model, history, model_path, history_path):
-        model.save(model_path)
+
+    def save_history(self, history, history_path):
         with open(history_path, 'w') as f:
             json.dump(history.history, f)
-        print(f"Model saved to {model_path} and history saved to {history_path}")
+        print(f"History saved to {history_path}")
 
     def load_model(self, model_path):
         model = tf.keras.models.load_model(model_path)
@@ -96,24 +101,37 @@ class ModelTraining:
         plt.tight_layout()
         plt.show()
 
+    def plot_confusion_matrix_and_report(self, model):
+        predictions = model.predict(self.valid_generator)
+        y_true = self.valid_generator.classes 
+        y_pred = np.argmax(predictions, axis=1)
+
+        cm = confusion_matrix(y_true, y_pred)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', xticklabels=self.class_names, yticklabels=self.class_names, cmap='Blues')
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.show()
+
+        print(classification_report(y_true, y_pred, target_names=self.class_names))
+
     def visualize_predictions(self, model, num_images=16):
         images, labels = next(iter(self.valid_generator))
         predictions = model.predict(images)
-        
-        plt.figure(figsize=(9, 9))
-        for i in range(num_images):
+        indices = np.random.choice(range(images.shape[0]), num_images, replace=False)
+
+        plt.figure(figsize=(6, 6))
+        for i, idx in enumerate(indices):
             plt.subplot(4, 4, i + 1)
-            img = images[i]
+            img = images[idx]
             plt.imshow(img)
-            true_label = np.argmax(labels[i])
-            predicted_label = np.argmax(predictions[i])
+            true_label = np.argmax(labels[idx])
+            predicted_label = np.argmax(predictions[idx])
             true_label_name = self.class_names[true_label]
             predicted_label_name = self.class_names[predicted_label]
             color = "green" if true_label == predicted_label else "red"
             plt.title(f"True: {true_label_name}, Pred: {predicted_label_name}", color=color)
             plt.axis('off')
-        
+
         plt.tight_layout()
         plt.show()
-
-    
